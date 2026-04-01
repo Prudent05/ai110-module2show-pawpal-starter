@@ -2,10 +2,73 @@
 
 ## 1. System Design
 
+### Core User Actions
+
+A PawPal+ user needs to be able to perform three primary actions:
+
+1. **Add or manage a pet** — The owner enters their pet's profile (name, species, age, weight, and any health notes). This gives the system the context it needs to tailor and prioritize care tasks appropriately.
+
+2. **Add or edit care tasks** — The owner creates tasks such as a morning walk, feeding, medication, grooming, or enrichment activities. Each task carries at minimum a duration (in minutes) and a priority level so the scheduler can rank and fit them into the day.
+
+3. **Generate and view today's daily schedule** — The owner requests a daily care plan. The scheduler considers the total time available, task priorities, and any pet-specific constraints to produce an ordered plan and explain why it was arranged that way.
+
 **a. Initial design**
 
-- Briefly describe your initial UML design.
-- What classes did you include, and what responsibilities did you assign to each?
+The system is organized around four classes: `Owner`, `Pet`, `Task`, and `Scheduler`.
+
+- **Owner** stores the owner's name and the number of minutes they have available in a day. It holds a list of `Pet` objects and exposes methods to add or remove pets.
+- **Pet** stores the pet's profile (name, species, age, weight, health notes) and owns a list of `Task` objects. It can add or remove tasks and retrieve only the incomplete ones.
+- **Task** (modeled as a Python dataclass) stores everything about a single care activity: its name, category (walk, feeding, meds, etc.), duration, priority, completion status, and assigned time slot. It can be marked complete or rescheduled.
+- **Scheduler** holds a reference to the `Owner` and iterates over all pets and their tasks to produce a ranked, time-fitted daily plan. It exposes a method to explain its reasoning in plain language.
+
+The key relationship is: an `Owner` has zero or more `Pet` objects; each `Pet` has zero or more `Task` objects; the `Scheduler` uses the `Owner` (and transitively its pets and tasks) to build the plan.
+
+### Mermaid UML Class Diagram
+
+```mermaid
+classDiagram
+    class Owner {
+        +str name
+        +int available_minutes
+        +list~Pet~ pets
+        +add_pet(pet: Pet) None
+        +remove_pet(pet_name: str) None
+    }
+
+    class Pet {
+        +str name
+        +str species
+        +int age
+        +float weight_kg
+        +str health_notes
+        +list~Task~ tasks
+        +add_task(task: Task) None
+        +remove_task(task_name: str) None
+        +get_pending_tasks() list~Task~
+    }
+
+    class Task {
+        +str name
+        +str task_type
+        +int duration_minutes
+        +int priority
+        +bool completed
+        +str scheduled_time
+        +mark_complete() None
+        +reschedule(new_time: str) None
+    }
+
+    class Scheduler {
+        +Owner owner
+        +generate_plan() list~Task~
+        +explain_plan() str
+        +filter_by_priority(min_priority: int) list~Task~
+    }
+
+    Owner "1" --> "0..*" Pet : owns
+    Pet "1" --> "0..*" Task : has
+    Scheduler --> Owner : uses
+```
 
 **b. Design changes**
 
